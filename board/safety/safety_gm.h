@@ -152,10 +152,11 @@ static int gm_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
     bool violation = 0;
     desired_torque = to_signed(desired_torque, 11);
 
+    int rolling_counter = GET_BYTE(to_send, 0) >> 4;
+
     if (current_controls_allowed) {
       int desired_torque = ((GET_BYTE(to_send, 0) & 0x7U) << 8) + GET_BYTE(to_send, 1);
       desired_torque = to_signed(desired_torque, 11);
-      int rolling_counter = GET_BYTE(to_send, 0) >> 4;
       int expected_rolling_counter = ((gm_lkas_last_rc + 1) & 3); //power of 2 mod shortcut
       
       // *** rolling counter in-order check ***
