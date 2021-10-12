@@ -153,8 +153,6 @@ static int gm_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
     bool violation = 0;
     desired_torque = to_signed(desired_torque, 11);
 
-    int rolling_counter = GET_BYTE(to_send, 0) >> 4;
-
     if (current_controls_allowed) {
 
       // *** global torque limit check ***
