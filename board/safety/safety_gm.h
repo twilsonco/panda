@@ -147,6 +147,7 @@ static int gm_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
 
   // LKA STEER: safety check
   if (addr == 384) {
+    int rolling_counter = GET_BYTE(to_send, 0) >> 4;
     int desired_torque = ((GET_BYTE(to_send, 0) & 0x7U) << 8) + GET_BYTE(to_send, 1);
     uint32_t ts = microsecond_timer_get();
     bool violation = 0;
@@ -155,12 +156,6 @@ static int gm_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
     int rolling_counter = GET_BYTE(to_send, 0) >> 4;
 
     if (current_controls_allowed) {
-      int desired_torque = ((GET_BYTE(to_send, 0) & 0x7U) << 8) + GET_BYTE(to_send, 1);
-      desired_torque = to_signed(desired_torque, 11);
-      int expected_rolling_counter = ((gm_lkas_last_rc + 1) & 3); //power of 2 mod shortcut
-      
-      // *** rolling counter in-order check ***
-      violation |= (rolling_counter != expected_rolling_counter);
 
       // *** global torque limit check ***
       violation |= max_limit_check(desired_torque, GM_MAX_STEER, -GM_MAX_STEER);
@@ -175,11 +170,6 @@ static int gm_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
 
       // *** torque real time rate limit check ***
       violation |= rt_rate_limit_check(desired_torque, rt_torque_last, GM_MAX_RT_DELTA);
-
-      // *** LKAS frame rate limit check ***
-      uint32_t lkas_elapsed = get_ts_elapsed(ts, gm_lkas_last_ts);
-      violation |= (lkas_elapsed < GM_LKAS_MIN_INTERVAL);
-      
 
       // every RT_INTERVAL set the new limits
       uint32_t ts_elapsed = get_ts_elapsed(ts, ts_last);
@@ -205,10 +195,20 @@ static int gm_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
       tx = 0;
     }
 
-    //Save time and value of last transmitted LKAS frame
+    //TODO: Maybe should be checked at the moment the frame is sent via CAN - rcv interrupt could maybe prevent sending??
     if (tx == 1) {
-      gm_lkas_last_rc = rolling_counter;
-      gm_lkas_last_ts = ts;
+      uint32_t lkas_elapsed = get_ts_elapsed(ts, gm_lkas_last_ts);
+      int expected_lkas_rc = (gm_lkas_last_rc + 1) % 4;
+      //If less than 20ms have passed since last LKAS message or the rolling counter value isn't correct it is a violation
+      //TODO: The interval may need some fine tuning - testing the tolerance of the PSCM / send lag
+      if (lkas_elapsed < GM_LKAS_MIN_INTERVAL || rolling_counter != expected_lkas_rc) {
+        tx = 0;
+      }
+      else {
+        //otherwise, save values
+        gm_lkas_last_rc = rolling_counter;
+        gm_lkas_last_ts = ts;
+      }
     }
   }
 
