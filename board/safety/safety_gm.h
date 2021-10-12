@@ -18,6 +18,7 @@ const int GM_DRIVER_TORQUE_FACTOR = 4;
 const int GM_MAX_GAS = 3072;
 const int GM_MAX_REGEN = 1404;
 const int GM_MAX_BRAKE = 350;
+const uint32_t GM_LKAS_MIN_INTERVAL = 20000;    // 20ms minimum between LKAS frames
 const CanMsg GM_TX_MSGS[] = {{384, 0, 4}, {1033, 0, 7}, {1034, 0, 7}, {715, 0, 8}, {880, 0, 6},  // pt bus
                              {161, 1, 7}, {774, 1, 8}, {776, 1, 7}, {784, 1, 2},   // obs bus
                              {789, 2, 5},  // ch bus
@@ -33,6 +34,10 @@ AddrCheckStruct gm_addr_checks[] = {
 };
 #define GM_RX_CHECK_LEN (sizeof(gm_addr_checks) / sizeof(gm_addr_checks[0]))
 addr_checks gm_rx_checks = {gm_addr_checks, GM_RX_CHECK_LEN};
+
+//LKAS vars for ensuring in-order, correct timing
+int gm_lkas_last_rc = -1;
+uint32_t gm_lkas_last_ts = 0;
 
 static int gm_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
 
@@ -148,6 +153,13 @@ static int gm_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
     desired_torque = to_signed(desired_torque, 11);
 
     if (current_controls_allowed) {
+      int desired_torque = ((GET_BYTE(to_send, 0) & 0x7U) << 8) + GET_BYTE(to_send, 1);
+      desired_torque = to_signed(desired_torque, 11);
+      int rolling_counter = GET_BYTE(to_send, 0) >> 4;
+      int expected_rolling_counter = ((gm_lkas_last_rc + 1) & 3); //power of 2 mod shortcut
+      
+      // *** rolling counter in-order check ***
+      violation |= (rolling_counter != expected_rolling_counter);
 
       // *** global torque limit check ***
       violation |= max_limit_check(desired_torque, GM_MAX_STEER, -GM_MAX_STEER);
@@ -162,6 +174,11 @@ static int gm_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
 
       // *** torque real time rate limit check ***
       violation |= rt_rate_limit_check(desired_torque, rt_torque_last, GM_MAX_RT_DELTA);
+
+      // *** LKAS frame rate limit check ***
+      uint32_t lkas_elapsed = get_ts_elapsed(ts, gm_lkas_last_ts);
+      violation |= (lkas_elapsed < GM_LKAS_MIN_INTERVAL);
+      
 
       // every RT_INTERVAL set the new limits
       uint32_t ts_elapsed = get_ts_elapsed(ts, ts_last);
@@ -185,6 +202,12 @@ static int gm_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
 
     if (violation) {
       tx = 0;
+    }
+
+    //Save time and value of last transmitted LKAS frame
+    if (tx == 1) {
+      gm_lkas_last_rc = rolling_counter;
+      gm_lkas_last_ts = ts;
     }
   }
 
