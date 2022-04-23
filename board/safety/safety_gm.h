@@ -281,8 +281,14 @@ static int gm_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
     // Disabled message is !engaged with gas
     // value that corresponds to max regen.
     if (!current_controls_allowed) {
+      // Stock ECU sends max regen when not enabled
+      if (gas_regen != GM_MAX_REGEN) {
+        tx = 0;
+      }
+    }
+    if (!controls_allowed) {
       bool apply = GET_BYTE(to_send, 0) & 1U;
-      if (apply || (gas_regen != GM_MAX_REGEN)) {
+      if (apply) {
         tx = 0;
       }
     }
