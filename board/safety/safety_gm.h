@@ -34,7 +34,7 @@ const GM_LIMIT GM_LIMITS[] =
     .GM_DRIVER_TORQUE_FACTOR = 4,
     .GM_MAX_GAS = 4095,
     .GM_MAX_REGEN = 1404,
-    .GM_MAX_BRAKE = 350
+    .GM_MAX_BRAKE = 500
   },
   { // safety param 1 - Trucks
     .GM_MAX_STEER = 600,
@@ -45,7 +45,7 @@ const GM_LIMIT GM_LIMITS[] =
     .GM_DRIVER_TORQUE_FACTOR = 4,
     .GM_MAX_GAS = 4095,
     .GM_MAX_REGEN = 1404,
-    .GM_MAX_BRAKE = 350
+    .GM_MAX_BRAKE = 500
   },
 };
 
