@@ -134,7 +134,7 @@ static int gm_tx_hook(CANPacket_t *to_send, bool longitudinal_allowed) {
   if (addr == 789) {
     int brake = ((GET_BYTE(to_send, 0) & 0xFU) << 8) + GET_BYTE(to_send, 1);
     brake = (0x1000 - brake) & 0xFFF;
-    if (!current_controls_allowed || !longitudinal_allowed) {
+    if (!current_controls_allowed) {
       if (brake != 0) {
         tx = 0;
       }
