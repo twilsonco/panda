@@ -133,7 +133,7 @@ static int gm_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
     }
 
     if (addr == 452) {
-      gas_pressed = GET_BYTE(to_push, 5) >= 50U;
+      gas_pressed = GET_BYTE(to_push, 5) >= 52U;
     }
 
     // exit controls on regen paddle
