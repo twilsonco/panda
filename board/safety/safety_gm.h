@@ -112,18 +112,46 @@ static int gm_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
 
     // ACC steering wheel buttons
     if (addr == 481) {
+      // lka button
+      bool lfa_pressed = (GET_BYTES_04(to_push) >> 23) & 0x1; // LKA on signal
+      if (lfa_pressed && !lfa_pressed_prev)
+      {
+        controls_allowed = 1;
+        lateral_allowed = 1;
+      }
+      lfa_pressed_prev = lfa_pressed;
+
+      // acc buttons
       int button = (GET_BYTE(to_push, 5) & 0x70U) >> 4;
       switch (button) {
         case 2:  // resume
         case 3:  // set
           controls_allowed = 1;
+          lateral_allowed = 1;
           break;
         case 6:  // cancel
           controls_allowed = 0;
+          lateral_allowed = 1;
           break;
         default:
           break;  // any other button is irrelevant
       }
+    }
+
+    if (addr == 201) {
+      bool acc_main_on = (GET_BYTES_04(to_push) >> 29) & 0x1; // ACC main_on signal
+      if (acc_main_on && !acc_main_on_prev)
+      {
+        controls_allowed = 1;
+        lateral_allowed = 1;
+      }
+      else if (acc_main_on_prev != acc_main_on)
+      {
+        disengageFromBrakes = false;
+        controls_allowed = 0;
+        lateral_allowed = 0;
+      }
+      acc_main_on_prev = acc_main_on;
     }
 
     if (addr == 241) {
@@ -219,7 +247,7 @@ static int gm_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
     bool violation = 0;
     desired_torque = to_signed(desired_torque, 11);
 
-    if (current_controls_allowed) {
+    if (current_controls_allowed || lateral_allowed) {
 
       // *** global torque limit check ***
       violation |= max_limit_check(desired_torque, GM_MAX_STEER, -GM_MAX_STEER);
@@ -245,12 +273,12 @@ static int gm_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
     }
 
     // no torque if controls is not allowed
-    if (!current_controls_allowed && (desired_torque != 0)) {
+    if (!(current_controls_allowed || lateral_allowed) && (desired_torque != 0)) {
       violation = 1;
     }
 
     // reset to 0 if either controls is not allowed or there's a violation
-    if (violation || !current_controls_allowed) {
+    if (violation || !(current_controls_allowed || lateral_allowed)) {
       desired_torque_last = 0;
       rt_torque_last = 0;
       ts_last = ts;
@@ -395,6 +423,8 @@ static const addr_checks* gm_init(int16_t param) {
     gm_allow_fwd = false;
   }
 
+  disengageFromBrakes = false;
+  lateral_allowed = true;
   controls_allowed = false;
   relay_malfunction_reset();
   return &gm_rx_checks;
