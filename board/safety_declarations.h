@@ -101,6 +101,7 @@ bool relay_malfunction = false;
 bool gas_interceptor_detected = false;
 int gas_interceptor_prev = 0;
 bool gas_pressed = false;
+bool gas_pressed_slight = false;
 bool gas_pressed_prev = false;
 bool brake_pressed = false;
 bool brake_pressed_prev = false;

@@ -162,6 +162,7 @@ static int gm_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
 
     if (addr == 452) {
       gas_pressed = GET_BYTE(to_push, 5) >= 40U;
+      gas_pressed_slight = GET_BYTE(to_push, 5) != 0U;
     }
 
     // exit controls on regen paddle
@@ -229,7 +230,7 @@ static int gm_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
   if (addr == 789) {
     int brake = ((GET_BYTE(to_send, 0) & 0xFU) << 8) + GET_BYTE(to_send, 1);
     brake = (0x1000 - brake) & 0xFFF;
-    if (!current_controls_allowed) {
+    if (!(current_controls_allowed || lateral_allowed) || gas_pressed_slight) {
       if (brake != 0) {
         tx = 0;
       }
