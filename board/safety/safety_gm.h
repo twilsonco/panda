@@ -113,7 +113,7 @@ static int gm_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
     // ACC steering wheel buttons
     if (addr == 481) {
       // lka button
-      bool lfa_pressed = (GET_BYTES_04(to_push) >> 23) & 0x1; // LKA on signal
+      bool lfa_pressed = (GET_BYTE(to_push, 2) & 0x80U); // LKA on signal
       if (lfa_pressed && !lfa_pressed_prev)
       {
         controls_allowed = 1;
@@ -139,7 +139,7 @@ static int gm_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
     }
 
     if (addr == 201) {
-      bool acc_main_on = (GET_BYTES_04(to_push) >> 29) & 0x1; // ACC main_on signal
+      bool acc_main_on = (GET_BYTE(to_push, 3) & 0x20U); // ACC main_on signal
       if (acc_main_on && !acc_main_on_prev)
       {
         controls_allowed = 1;
