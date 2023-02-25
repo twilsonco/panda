@@ -307,8 +307,8 @@ int usb_cb_control_msg(USB_Setup_TypeDef *setup, uint8_t *resp, bool hardwired) 
       break;
     // **** 0xb2: get fan rpm
     case 0xb2:
-      resp[0] = (fan_rpm & 0x00FFU);
-      resp[1] = ((fan_rpm & 0xFF00U) >> 8U);
+      resp[0] = (fan_state.rpm & 0x00FFU);
+      resp[1] = ((fan_state.rpm & 0xFF00U) >> 8U);
       resp_len = 2;
       break;
     // **** 0xb3: set phone power
