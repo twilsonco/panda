@@ -10,6 +10,10 @@ void unused_set_ir_power(uint8_t percentage) {
   UNUSED(percentage);
 }
 
+void unused_set_fan_enabled(bool enabled) {
+  UNUSED(enabled);
+}
+
 void unused_set_fan_power(uint8_t percentage) {
   UNUSED(percentage);
 }
